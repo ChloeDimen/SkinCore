@@ -1,6 +1,8 @@
 package com.jetwey.skin_core.skin;
 
+import android.app.Activity;
 import android.content.Context;
+import android.graphics.Typeface;
 import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -9,9 +11,15 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.jetwey.skin_core.utils.SkinThemeUtils;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
+
 
 public
         /**
@@ -21,20 +29,24 @@ public
          *Version:1.0
          *Describe:
          */
-class SkinLayoutFactory implements LayoutInflater.Factory2 {
+class SkinLayoutFactory implements LayoutInflater.Factory2, Observer {
     private static final String[] mClassPrefixList = {
             "android.widget.",
             "android.view.",
             "android.webkit."
     };
     private static final Class<?>[] mConstructorSignature = new Class[]{Context.class, AttributeSet.class};
-
-    private static final Map<String, Constructor<? extends View>> mConstructorMap = new ArrayMap<>();
+    private static final HashMap<String, Constructor<? extends View>> mConstructorMap =
+            new HashMap<String, Constructor<? extends View>>();
+   // private static final Map<String, Constructor<? extends View>> mConstructorMap = new ArrayMap<>();
     //属性处理类
     private SkinAttribute mSkinAttribute;
 
-    public SkinLayoutFactory() {
-        mSkinAttribute = new SkinAttribute();
+
+    private Activity activity;
+    public SkinLayoutFactory(Activity activity, Typeface skinTypeface) {
+        this.activity = activity;
+        mSkinAttribute = new SkinAttribute(skinTypeface);
     }
 
     @Nullable
@@ -78,14 +90,14 @@ class SkinLayoutFactory implements LayoutInflater.Factory2 {
                 //获取构造方法
                 constructor = clazz.getConstructor(mConstructorSignature);
                 mConstructorMap.put(name, constructor);
-                constructor.setAccessible(true);
+               // constructor.setAccessible(true);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         if (null != constructor) {
             try {
-                return constructor.newInstance(constructor, attrs);
+                return constructor.newInstance(context, attrs);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -100,5 +112,17 @@ class SkinLayoutFactory implements LayoutInflater.Factory2 {
     @Override
     public View onCreateView(@NonNull String name, @NonNull Context context, @NonNull AttributeSet attrs) {
         return null;
+    }
+
+
+    @Override
+    public void update(Observable o, Object arg) {
+        //更新状态栏
+        SkinThemeUtils.updataStatusBarColor(activity);
+        //更新字体
+        Typeface skinTypeface = SkinThemeUtils.getSkinTypeface(activity);
+        mSkinAttribute.setTypeface(skinTypeface);
+        //更换皮肤
+        mSkinAttribute.applySkin();
     }
 }

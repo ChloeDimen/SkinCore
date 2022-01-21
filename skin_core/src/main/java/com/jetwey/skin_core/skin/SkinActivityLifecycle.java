@@ -1,12 +1,19 @@
 package com.jetwey.skin_core.skin;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.jetwey.skin_core.utils.SkinThemeUtils;
+
+import java.lang.reflect.Field;
+import java.util.HashMap;
 
 public
         /**
@@ -17,13 +24,33 @@ public
          *Describe:
          */
 class SkinActivityLifecycle  implements Application.ActivityLifecycleCallbacks {
+    HashMap<Activity , SkinLayoutFactory> factoryHashMap = new HashMap<>();
     @Override
     public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
-        LayoutInflater layoutInflater = LayoutInflater.from(activity);
+        /**
+         *  更新状态栏
+         */
+        SkinThemeUtils.updataStatusBarColor(activity);
 
+        /**
+         * 更新字体
+         */
+        Typeface skinTypeface = SkinThemeUtils.getSkinTypeface(activity);
+        LayoutInflater layoutInflater = LayoutInflater.from(activity);
+        try {
+            Field mFactorySet = LayoutInflater.class.getDeclaredField("mFactorySet");
+            mFactorySet.setAccessible(true);
+            mFactorySet.setBoolean(layoutInflater, false);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         //添加自定义创建view 工厂
-        SkinLayoutFactory skinLayoutFactory = new SkinLayoutFactory();
+        SkinLayoutFactory skinLayoutFactory = new SkinLayoutFactory(activity,skinTypeface);
         layoutInflater.setFactory2(skinLayoutFactory);
+
+        //注册观察者
+        SkinManager.getInstance().addObserver(skinLayoutFactory);
+        factoryHashMap.put(activity, skinLayoutFactory);
     }
 
     @Override
@@ -53,6 +80,8 @@ class SkinActivityLifecycle  implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityDestroyed(@NonNull Activity activity) {
-
+        //删除观察者
+        SkinLayoutFactory remove = factoryHashMap.remove(activity);
+        SkinManager.getInstance().deleteObserver(remove);
     }
 }
